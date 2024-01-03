@@ -45,24 +45,31 @@ def compute_diff(text1, text2):
     diff = difflib.ndiff(text1.splitlines(keepends=True), text2.splitlines(keepends=True))
     return list(diff)
 
-def pretty_diff(diff):
+def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=False):
     formatted_diff = []
     line_num_1 = line_num_2 = 0
 
     for line in diff:
-        escaped_line = html.escape(line[2:])
+        content = html.escape(line[2:]) if escape_html else line[2:]
+        if strip_whitespace:
+            content = content.strip()
+
         line_indicator = line[0]
+
+        line_num_str = f"{line_num_1:4}" if line_indicator != '+' else f"{line_num_2:4}"
+        if format_for_ai:
+            line_num_str = str(line_num_1) if line_indicator != '+' else str(line_num_2)
 
         if line_indicator == '+':
             line_num_2 += 1
-            formatted_diff.append(f'<span style="background-color: #ddffdd;">{line_num_2:4}: {escaped_line}</span>')
+            formatted_diff.append(f'<span style="background-color: #ddffdd;">{line_num_str}: {content}</span>')
         elif line_indicator == '-':
             line_num_1 += 1
-            formatted_diff.append(f'<span style="background-color: #ffdddd;">{line_num_1:4}: {escaped_line}</span>')
+            formatted_diff.append(f'<span style="background-color: #ffdddd;">{line_num_str}: {content}</span>')
         else:
             line_num_1 += 1
             line_num_2 += 1
-            formatted_diff.append(f'{line_num_1:4}: {escaped_line}')
+            formatted_diff.append(f'{line_num_str}: {content}')
 
     return '<br>'.join(formatted_diff)
 
@@ -78,7 +85,7 @@ def analyze_diff_with_ai(model, prompt, api_key):
     except Exception as e:
         return f"An error occurred: {e}"
 
-st.title("🧠SEODiff")
+st.title("🧠 SEODiff")
 st.markdown("## Webpage HTML Diff with Wayback Machine Support")
 st.markdown("Created by [Paul Shapiro](https://searchwilderness.com/)")
 
@@ -109,16 +116,18 @@ if 'text1' in st.session_state and 'text2' in st.session_state:
     pretty_diff_text = pretty_diff(diff)
     st.markdown("<div class='scrollable-container'>" + pretty_diff_text + "</div>", unsafe_allow_html=True)
 
-st.header("AI Analysis of Diff")
-with st.form("ai_analysis_form"):
-    api_key = st.text_input("Enter OpenAI API Key", type="password")
-    model_choice = st.selectbox("Choose AI Model", ["gpt-3.5-turbo-16k", "gpt-4-32k", "gpt-4-turbo", "gpt-4-1106-preview"])
-    user_prompt = st.text_area("Customize the Prompt", value=f"Analyze the changes as specified from the output via python's difflib, taking into account the included line numbers. Summarize the results.\n\n{pretty_diff_text}", height=150)
-    analyze_button = st.form_submit_button("Analyze Diff")
+    ai_analysis_text = pretty_diff(diff, escape_html=False, strip_whitespace=True, format_for_ai=True).replace('<br>', '\n')
 
-if analyze_button and api_key:
-    analysis_result = analyze_diff_with_ai(model_choice, user_prompt, api_key)
-    st.text_area("Analysis Result", value=analysis_result, height=150)
+    st.header("AI Analysis of Diff")
+    with st.form("ai_analysis_form"):
+        api_key = st.text_input("Enter OpenAI API Key", type="password")
+        model_choice = st.selectbox("Choose AI Model", ["gpt-3.5-turbo-16k", "gpt-4-32k", "gpt-4-turbo", "gpt-4-1106-preview"])
+        user_prompt = st.text_area("Customize the Prompt", value=f"Analyze the changes as specified from the output via python's difflib, taking into account the included line numbers. Summarize the results.\n\n{ai_analysis_text}", height=150)
+        analyze_button = st.form_submit_button("Analyze Diff")
+
+        if analyze_button and api_key:
+            analysis_result = analyze_diff_with_ai(model_choice, user_prompt, api_key)
+            st.text_area("Analysis Result", value=analysis_result, height=150)
 
 st.markdown("""
     <style>
