@@ -1,6 +1,3 @@
 streamlit
-difflib
-html
 requests
-datetime
 openai
