@@ -112,7 +112,7 @@ if 'text1' in st.session_state and 'text2' in st.session_state:
 st.header("AI Analysis of Diff")
 with st.form("ai_analysis_form"):
     api_key = st.text_input("Enter OpenAI API Key", type="password")
-    model_choice = st.selectbox("Choose AI Model", ["gpt-4", "gpt-3.5-turbo-16k", "gpt-4-32k"])
+    model_choice = st.selectbox("Choose AI Model", ["gpt-3.5-turbo-16k", "gpt-4-32k", "gpt-4-turbo", "gpt-4-1106-preview"])
     user_prompt = st.text_area("Customize the Prompt", value=f"Analyze the changes as specified from the output via python's difflib, taking into account the included line numbers. Summarize the results.\n\n{pretty_diff_text}", height=150)
     analyze_button = st.form_submit_button("Analyze Diff")
 
