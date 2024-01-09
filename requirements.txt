@@ -2,3 +2,5 @@ streamlit
 requests
 openai==0.28
 beautifulsoup4
+trafilatura
+nltk

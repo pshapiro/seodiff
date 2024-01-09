@@ -4,8 +4,13 @@ import html
 import requests
 from datetime import datetime
 import re
+import trafilatura
+import nltk
 from bs4 import BeautifulSoup
 import openai
+
+# Ensure nltk punkt tokenizer is downloaded
+nltk.download('punkt')
 
 def fetch_available_dates(url):
     try:
@@ -42,7 +47,10 @@ def fetch_current_page(url):
     return None
 
 def compute_diff(text1, text2):
-    diff = difflib.ndiff(text1.splitlines(keepends=True), text2.splitlines(keepends=True))
+    if isinstance(text1, list) and isinstance(text2, list):
+        diff = difflib.ndiff(text1, text2)
+    else:
+        diff = difflib.ndiff(text1.splitlines(keepends=True), text2.splitlines(keepends=True))
     return list(diff)
 
 def extract_html_part(html_content, part):
@@ -93,11 +101,6 @@ def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=Fa
 
     return '\n'.join(formatted_diff) if format_for_ai else '<br>'.join(formatted_diff)
 
-def remove_html_tags(text):
-    """Remove html tags from a string"""
-    clean = re.compile('<.*?>')
-    return re.sub(clean, '', text)
-
 def analyze_diff_with_ai(model, prompt, api_key):
     openai.api_key = api_key
     try:
@@ -128,15 +131,20 @@ with st.sidebar:
     source2_option = st.radio("Choose Source 2 Type", ("Archived", "Current"), key='source2_option')
     selected_date_2 = st.selectbox("Select Date for Source 2", available_dates, key='selected_date_2') if source2_option == "Archived" and available_dates else None
 
+    focus_on_html_part = st.radio("Focus on Part of HTML", ("Full", "Head", "Body", "Extracted Text Content"))
     show_only_changes = st.checkbox("Show Only Changes", value=False)
-    focus_on_html_part = st.radio("Focus on Part of HTML", ("Full", "Head", "Body"))
 
     if st.button("Fetch HTML for Comparison"):
         html1 = fetch_archived_page(wayback_url, selected_date_1) if source1_option == "Archived" else fetch_current_page(wayback_url)
         html2 = fetch_archived_page(wayback_url, selected_date_2) if source2_option == "Archived" else fetch_current_page(wayback_url)
+
         if html1 and html2:
-            st.session_state.text1 = extract_html_part(html1, focus_on_html_part)
-            st.session_state.text2 = extract_html_part(html2, focus_on_html_part)
+            if focus_on_html_part == "Extracted Text Content":
+                st.session_state.text1 = nltk.sent_tokenize(trafilatura.extract(html1, output_format="text"))
+                st.session_state.text2 = nltk.sent_tokenize(trafilatura.extract(html2, output_format="text"))
+            else:
+                st.session_state.text1 = extract_html_part(html1, focus_on_html_part)
+                st.session_state.text2 = extract_html_part(html2, focus_on_html_part)
 
 if 'text1' in st.session_state and 'text2' in st.session_state:
     diff = compute_diff(st.session_state.text1, st.session_state.text2)
@@ -162,7 +170,9 @@ st.markdown("""
     <style>
         .scrollable-container {
             overflow-y: scroll;
-            height: 400px;
+            height: 400px; /* Ensure this is consistent with the desired height */
+            border: 1px solid #ccc; /* Optional: adds a border around the container */
+            padding: 10px; /* Optional: adds some padding inside the container */
         }
     </style>
     """, unsafe_allow_html=True)
