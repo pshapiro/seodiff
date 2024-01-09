@@ -53,12 +53,25 @@ def compute_diff(text1, text2):
         diff = difflib.ndiff(text1.splitlines(keepends=True), text2.splitlines(keepends=True))
     return list(diff)
 
-def extract_html_part(html_content, part):
+def extract_html_part(html_content, part, include_title_and_meta=False):
     soup = BeautifulSoup(html_content, 'html.parser')
     if part == "Head":
         return str(soup.head) if soup.head else ""
     elif part == "Body":
         return str(soup.body) if soup.body else ""
+    elif part == "Extracted Text Content":
+        text_content = []
+        if include_title_and_meta:
+            title_tag = soup.find('title')
+            meta_desc_tag = soup.find('meta', attrs={'name': 'description'})
+            if title_tag:
+                text_content.append(f"title: {title_tag.get_text()}")
+            if meta_desc_tag:
+                text_content.append(f"meta description: {meta_desc_tag.get('content', '')}")
+        extracted_text = trafilatura.extract(html_content, output_format="text")
+        if extracted_text:
+            text_content.extend(nltk.sent_tokenize(extracted_text))
+        return text_content
     return html_content
 
 def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=False, show_only_changes=False):
@@ -132,6 +145,10 @@ with st.sidebar:
     selected_date_2 = st.selectbox("Select Date for Source 2", available_dates, key='selected_date_2') if source2_option == "Archived" and available_dates else None
 
     focus_on_html_part = st.radio("Focus on Part of HTML", ("Full", "Head", "Body", "Extracted Text Content"))
+    include_title_and_meta = False
+    if focus_on_html_part == "Extracted Text Content":
+        include_title_and_meta = st.checkbox("Include Title and Meta Description", value=False)
+
     show_only_changes = st.checkbox("Show Only Changes", value=False)
 
     if st.button("Fetch HTML for Comparison"):
@@ -140,8 +157,8 @@ with st.sidebar:
 
         if html1 and html2:
             if focus_on_html_part == "Extracted Text Content":
-                st.session_state.text1 = nltk.sent_tokenize(trafilatura.extract(html1, output_format="text"))
-                st.session_state.text2 = nltk.sent_tokenize(trafilatura.extract(html2, output_format="text"))
+                st.session_state.text1 = extract_html_part(html1, focus_on_html_part, include_title_and_meta)
+                st.session_state.text2 = extract_html_part(html2, focus_on_html_part, include_title_and_meta)
             else:
                 st.session_state.text1 = extract_html_part(html1, focus_on_html_part)
                 st.session_state.text2 = extract_html_part(html2, focus_on_html_part)
