@@ -129,6 +129,7 @@ def analyze_diff_with_ai(model, prompt, api_key):
 st.title("🧠 SEODiff")
 st.markdown("## Webpage HTML Diff with Wayback Machine Support")
 st.markdown("Created by [Paul Shapiro](https://searchwilderness.com/)")
+st.markdown("For an explanation about how to use SEODiff, see this [blog post](https://searchwilderness.com/).")
 
 with st.sidebar:
     st.title("Comparison Settings")
@@ -171,7 +172,7 @@ if 'text1' in st.session_state and 'text2' in st.session_state:
 st.header("AI Analysis of Diff")
 with st.form("ai_analysis_form"):
     api_key = st.text_input("Enter OpenAI API Key", type="password")
-    model_choice = st.selectbox("Choose AI Model", ["gpt-3.5-turbo-16k", "gpt-4-32k", "gpt-4-turbo", "gpt-4-1106-preview"])
+    model_choice = st.selectbox("Choose AI Model", ["gpt-3.5-turbo-16k", "gpt-4-32k", "gpt-4-turbo", "gpt-4.5-turbo", "gpt-4", "gpt-4-1106-preview"])
     if 'text1' in st.session_state and 'text2' in st.session_state:
         ai_analysis_text = pretty_diff(diff, escape_html=False, strip_whitespace=True, format_for_ai=True, show_only_changes=show_only_changes)
     else:
