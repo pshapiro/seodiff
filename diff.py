@@ -87,14 +87,22 @@ def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=Fa
 
         if line_indicator == ' ':
             if show_only_changes:
-                continue
-            line_num_1 += 1
-            line_num_2 += 1
-            line_prefix = f"{line_num_1}: " if format_for_ai else f"{line_num_1}: "
-            if format_for_ai:
-                formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
+                if format_for_ai:
+                    continue
+                else:
+                    # Check if the sentence has any changes
+                    if any(change_line[0] in ['+', '-'] for change_line in diff if change_line[2:].strip() == content):
+                        formatted_line = f"<span>{content}</span>" if content else "[Blank Line]"
+                        formatted_diff.append(formatted_line)
             else:
-                formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
+                line_num_1 += 1
+                line_num_2 += 1
+                line_prefix = f"{line_num_1}: " if format_for_ai else f"{line_num_1}: "
+                if format_for_ai:
+                    formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
+                else:
+                    formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
+                formatted_diff.append(formatted_line)
         elif line_indicator == '+':
             line_num_2 += 1
             line_prefix = f"+{line_num_2}: " if format_for_ai else f"+{line_num_2}: "
@@ -102,6 +110,7 @@ def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=Fa
                 formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
             else:
                 formatted_line = f"<span style='background-color: #ddffdd;'>{line_prefix} {content}</span>" if content else f"<span style='background-color: #ddffdd;'>{line_prefix} [Blank Line]</span>"
+            formatted_diff.append(formatted_line)
         elif line_indicator == '-':
             line_num_1 += 1
             line_prefix = f"-{line_num_1}: " if format_for_ai else f"-{line_num_1}: "
@@ -109,8 +118,7 @@ def pretty_diff(diff, escape_html=True, strip_whitespace=False, format_for_ai=Fa
                 formatted_line = f"{line_prefix} {content}" if content else f"{line_prefix} [Blank Line]"
             else:
                 formatted_line = f"<span style='background-color: #ffdddd;'>{line_prefix} {content}</span>" if content else f"<span style='background-color: #ffdddd;'>{line_prefix} [Blank Line]</span>"
-
-        formatted_diff.append(formatted_line)
+            formatted_diff.append(formatted_line)
 
     return '\n'.join(formatted_diff) if format_for_ai else '<br>'.join(formatted_diff)
 
@@ -119,13 +127,14 @@ def analyze_diff_with_ai(model, prompt, api_key):
     try:
         response = openai.ChatCompletion.create(
             model=model,
-            messages=[{"role": "system", "content": "You are a helpful assistant."}, 
+            messages=[{"role": "system", "content": "You are a helpful assistant."},
                       {"role": "user", "content": prompt}]
         )
         return response['choices'][0]['message']['content']
     except Exception as e:
         return f"An error occurred: {e}"
-
+    
+# Streamlit App Structure
 st.title("🧠 SEODiff")
 st.markdown("## Webpage HTML Diff with Wayback Machine Support")
 st.markdown("Created by [Paul Shapiro](https://searchwilderness.com/)")
@@ -180,17 +189,17 @@ with st.form("ai_analysis_form"):
     user_prompt = st.text_area("Customize the Prompt", value=f"Analyze the changes as specified from the output via python's difflib, taking into account the included line numbers. A '-' before a line means it was removed. A '+' before a line means it was added. Make sure to note anything that may impact SEO such as canonical, hreflang, schema, links, or content changes. Summarize the results.\n\n{ai_analysis_text}", height=150)
     analyze_button = st.form_submit_button("Analyze Diff")
 
-if analyze_button and api_key:
-    analysis_result = analyze_diff_with_ai(model_choice, user_prompt, api_key)
-    st.text_area("Analysis Result", value=analysis_result, height=150)
+    if analyze_button and api_key:
+        analysis_result = analyze_diff_with_ai(model_choice, user_prompt, api_key)
+        st.text_area("Analysis Result", value=analysis_result, height=150)
 
-st.markdown("""
+st.markdown(""" 
     <style>
         .scrollable-container {
             overflow-y: scroll;
-            height: 400px; /* Ensure this is consistent with the desired height */
-            border: 1px solid #ccc; /* Optional: adds a border around the container */
-            padding: 10px; /* Optional: adds some padding inside the container */
+            height: 400px; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
         }
     </style>
     """, unsafe_allow_html=True)
